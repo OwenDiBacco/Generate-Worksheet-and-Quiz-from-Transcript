@@ -1,3 +1,4 @@
+import re
 import os
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -19,6 +20,28 @@ from PIL import Image, ImageTk
 
 from tkinter import Tk, filedialog
 
+
+import re
+import io
+from youtube_transcript_api import YouTubeTranscriptApi
+import google.generativeai as genai
+from flask import Flask, request, send_file, render_template
+from docx import Document
+import json
+import webbrowser
+from apiclient import discovery
+from oauth2client.file import Storage
+from httplib2 import Http
+from oauth2client import tools, client
+import uuid
+from pytubefix import YouTube
+from pytubefix.cli import on_progress
+import moviepy.editor as mp
+import speech_recognition as sr
+from pydub import AudioSegment
+from pydub.silence import split_on_silence
+from pathlib import Path
+import os
 
 class App:
     def __init__(self):
@@ -45,20 +68,16 @@ class App:
         print('heer')
 
     def select_txt_file(self):
-        # Create a Tkinter window to open the file dialog
-        root = Tk()
-        root.withdraw()  # Hide the main Tkinter window
-        
-        # Open the file dialog to select a .txt file
         selected_file = filedialog.askopenfilename(
             title="Select a .txt file",
-            filetypes=[("Text Files", "*.txt")]  # Filter to only show .txt files
+            filetypes=[("Text Files", "*.txt")]  # filter to only show .txt files
         )
         
-        # Return the selected file path
+        # return the selected file path
         if selected_file:
             self.txt_file = selected_file
             print(self.txt_file)
+
         else:
             print("No file selected.")
             self.txt_file = None
@@ -69,8 +88,10 @@ class App:
         self.root.destroy()
 
 
-    # create the main window
-    
+def read_txt_file(txt_path):
+    with open(txt_path, 'r', encoding='utf-8') as file:
+        return file.read()
+
 
 def prompt_genai(prompt):
     text = ''
@@ -85,35 +106,49 @@ def prompt_genai(prompt):
     return text
 
 
+def generate_json_data():
+    app = App()
+    txt_file_path = app.txt_file
+    txt_file_content = read_txt_file(txt_file_path)
+    prompt = read_txt_file(".\\prompt.txt")
+    form_prompt = f"{prompt} Notes: {txt_file_content}"
+    form_question_response = prompt_genai(form_prompt)
+    forms_questions_json = form_question_response.strip() # removes leading and trailing whitespace
+    forms_questions_json = forms_questions_json[7:-3].strip() # removes the first 7 characters and the last 3 characters
+    return forms_questions_json
+
+
 '''
 Code in function taken from Tanmay
 '''
 def generate_form(forms_questions_json):
-    generated_files = {}
+    forms_questions_json = json.loads(forms_questions_json) # creates a json object
 
-    forms_questions_json_str = json.dumps(forms_questions_json)
-    forms_questions = json.loads(forms_questions_json_str)
-    print("Parsed JSON successfully")
-    # Setup Google Forms API
     SCOPES = [
         "https://www.googleapis.com/auth/forms.body",
         "https://www.googleapis.com/auth/forms.responses.readonly"
     ]
+
     DISCOVERY_DOC = "https://forms.googleapis.com/$discovery/rest?version=v1"
+
     store = Storage("token.json") # token is Tanmay's
-    creds = store.get()
+    creds = store.get() # gets credentials from the token
+
     if not creds or creds.invalid:
-        flow = client.flow_from_clientsecrets("client_secrets.json", SCOPES) # client secret is Tanmay's
+        flow = client.flow_from_clientsecrets("client_secrets.json", SCOPES) # gets client secret; client secret is Tanmay's
         creds = tools.run_flow(flow, store)
-    form_service = discovery.build(
+
+    form_service = discovery.build( # creates a service object to interact with the Google Forms API
         "forms", "v1", http=creds.authorize(Http()), discoveryServiceUrl=DISCOVERY_DOC, static_discovery=False
     )
-    form = {
+
+    form = { # initalizes the Google Form 
         "info": {
             "title": "Generated Quiz",
         }
     }
-    result = form_service.forms().create(body=form).execute()
+
+    result = form_service.forms().create(body=form).execute() # creates the Google Form
     update_requests = [
         {
             "updateSettings": {
@@ -122,8 +157,10 @@ def generate_form(forms_questions_json):
             }
         }
     ]
+    
+    # creates the questions using JSON
     question_index = 0
-    for question_data in forms_questions:
+    for question_data in forms_questions_json:
         question_text = question_data.get("question", "")
         options = [{"value": option} for option in question_data.get("options", [])]
         correct_answer = question_data.get("correctAnswer", "A")
@@ -158,7 +195,10 @@ def generate_form(forms_questions_json):
         }
         update_requests.append(question_request)
         question_index += 1
+    
+    # creates all the questions in the Google Form
     form_service.forms().batchUpdate(formId=result["formId"], body={"requests": update_requests}).execute()
+    # Opens the Google Form
     form_url = f"https://docs.google.com/forms/d/{result['formId']}/edit"
     webbrowser.open(form_url)
     form_txt = io.BytesIO()
@@ -166,30 +206,7 @@ def generate_form(forms_questions_json):
     form_txt.seek(0)
     generated_files['form'] = form_txt
 
-
 if __name__ == "__main__":
-    form_prompt = f"""
-                    Based on the following notes and transcript, generate a list of multiple-choice questions. 
-                    Format each question as JSON objects with the following structure:
-
-                    {{
-                        "question": "Question text",
-                        "options": [
-                            "Option A",
-                            "Option B",
-                            "Option C",
-                            "Option D"
-                        ],
-                        "correctAnswer": "A"
-                    }}
-                    """
-    app = App()
-    content = app.txt_file
-    print(content)
-    response = prompt_genai(form_prompt)
-    print(response)
-    generate_form(response)
-    
-    
-
-
+    generated_files = {}
+    forms_questions_json = generate_json_data()
+    generate_form(forms_questions_json)

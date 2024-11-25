@@ -1,0 +1,12 @@
+Based on the following notes, generate a list of multiple-choice questions. 
+    Format each question as JSON objects with the following structure:
+    {{
+        "question": "Question text",
+        "options": [
+            "Option A",
+            "Option B",
+            "Option C",
+            "Option D"
+        ],
+        "correctAnswer": "A"
+    }}
