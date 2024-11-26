@@ -4,6 +4,9 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import json
 
+from docx.shared import Pt
+
+
 import io
 import google.generativeai as genai
 import json
@@ -19,7 +22,9 @@ from tkinter import filedialog
 from PIL import Image, ImageTk
 
 from tkinter import Tk, filedialog
-
+import aspose.words as aw
+from docx.shared import Pt
+from docx import Document
 
 import re
 import io
@@ -58,14 +63,13 @@ class App:
         zip_button.pack(pady=10)
 
 
-        description_label = tk.Label(self.root, text="Open Zip File")
+        description_label = tk.Label(self.root, text="Open Txt File")
         description_label.pack()
 
         close_button = tk.Button(self.root, text="Run", command=self.close_app)
         close_button.pack(side=tk.BOTTOM, pady=10)
 
         self.root.mainloop()
-        print('heer')
 
     def select_txt_file(self):
         selected_file = filedialog.askopenfilename(
@@ -79,7 +83,7 @@ class App:
             print(self.txt_file)
 
         else:
-            print("No file selected.")
+            print("no file selected.")
             self.txt_file = None
             print(self.txt_file)
     
@@ -106,9 +110,13 @@ def prompt_genai(prompt):
     return text
 
 
-def generate_json_data():
+def select_file():
     app = App()
     txt_file_path = app.txt_file
+    return txt_file_path
+
+
+def generate_json_data(txt_file_path):
     txt_file_content = read_txt_file(txt_file_path)
     prompt = read_txt_file(".\\prompt.txt")
     form_prompt = f"{prompt} Notes: {txt_file_content}"
@@ -206,7 +214,62 @@ def generate_form(forms_questions_json):
     form_txt.seek(0)
     generated_files['form'] = form_txt
 
+
+def generate_questions(txt_file, number_of_questions = 10):    
+    txt_content = read_txt_file(txt_file)
+    prompt = '''
+    Give me coding excersises for a worksheet using this transcript.
+    Format each question as JSON objects with the following structure and put all the questions in an array:
+    question = {
+                'number': 
+                'title':  
+                'description': 
+                
+            }
+    '''
+    prompt += f'Transcript: {txt_content}\nNumber of questions: {number_of_questions}'
+    response = prompt_genai(prompt)
+    response = response.strip() # removes leading and trailing whitespace
+    questions = response[7:-3].strip() # removes the first 7 characters and the last 3 characters
+    return questions
+    
+
+def generate_worksheet(file_name, questions):
+    output_path = "./workesheet output"
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    questions = json.loads(questions)
+    document = Document()
+    heading = document.add_heading(f'{file_name} Exercises', level=0)  # Use any heading level
+    run = heading.runs[0]
+    run.font.size = Pt(16)
+    
+    for question in questions:
+        print(question)
+        question_title = f'Exercise {question["number"]} {question["title"]}'
+        title = document.add_paragraph()  
+        run = title.add_run(question_title)  
+        run.bold = True  
+
+        question_description = f'{question["description"]}'
+        description = document.add_paragraph(question_description)
+
+        table = document.add_table(rows=4, cols=4)
+
+    
+    
+    
+    file = f'{file_name} Exercises.docx'
+    file_path = os.path.join(output_path, file) 
+    document.save(file_path)
+
 if __name__ == "__main__":
+    
     generated_files = {}
-    forms_questions_json = generate_json_data()
-    generate_form(forms_questions_json)
+    txt_file = select_file()
+    file_name = os.path.basename(txt_file)
+    questions = generate_questions(txt_file)
+    generate_worksheet(file_name, questions)
+    ## forms_questions_json = generate_json_data(txt_file)
+    ## generate_form(forms_questions_json)
