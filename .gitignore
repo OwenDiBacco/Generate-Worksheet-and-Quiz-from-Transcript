@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.env
+.venv
+
+# VS Code settings folder
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+
+# files
+
+# .env file
+.env
+
+# output folder
+worksheet_output/
+
+# client secret
+client_secrets.json
+
+# credentials
+credentials.json
+
+# token 
+token.json

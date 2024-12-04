@@ -1,0 +1,7 @@
+Give me coding excersises for a worksheet using this transcript.
+    Format each question as JSON objects with the following structure and put all the questions in an array:
+    question = {
+                'number': 
+                'title':  
+                'description':      
+            }

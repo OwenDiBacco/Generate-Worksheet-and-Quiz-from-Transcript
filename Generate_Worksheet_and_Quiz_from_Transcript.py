@@ -1,59 +1,40 @@
-import re
 import os
+import io
+import json
+import docx
+
 import google.generativeai as genai
 from dotenv import load_dotenv
-import json
-
-from docx.shared import Pt
 
 
-import io
+from spire.doc import *
+from spire.doc.common import *
+
 import google.generativeai as genai
-import json
 import webbrowser
 from apiclient import discovery
 from oauth2client.file import Storage
 from httplib2 import Http
 from oauth2client import tools, client
 
-import os
 import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, ImageTk
 
-from tkinter import Tk, filedialog
-import aspose.words as aw
-from docx.shared import Pt
-from docx import Document
-
-import re
-import io
-from youtube_transcript_api import YouTubeTranscriptApi
 import google.generativeai as genai
-from flask import Flask, request, send_file, render_template
-from docx import Document
-import json
+
 import webbrowser
 from apiclient import discovery
 from oauth2client.file import Storage
 from httplib2 import Http
 from oauth2client import tools, client
-import uuid
-from pytubefix import YouTube
-from pytubefix.cli import on_progress
-import moviepy.editor as mp
-import speech_recognition as sr
-from pydub import AudioSegment
-from pydub.silence import split_on_silence
-from pathlib import Path
-import os
+
 
 class App:
     def __init__(self):
         self.root = tk.Tk()
         self.root.geometry('200x250')
         self.root.title("Txt File Selector")
-
 
         original_image = Image.open('images/txt_image.png')
         resized_image = original_image.resize((50, 50), Image.LANCZOS)
@@ -116,9 +97,12 @@ def select_file():
     return txt_file_path
 
 
+'''
+JSON Data is for the Kahoot
+'''
 def generate_json_data(txt_file_path):
     txt_file_content = read_txt_file(txt_file_path)
-    prompt = read_txt_file(".\\prompt.txt")
+    prompt = read_txt_file(".\\Kahoot-prompt.txt")
     form_prompt = f"{prompt} Notes: {txt_file_content}"
     form_question_response = prompt_genai(form_prompt)
     forms_questions_json = form_question_response.strip() # removes leading and trailing whitespace
@@ -217,59 +201,90 @@ def generate_form(forms_questions_json):
 
 def generate_questions(txt_file, number_of_questions = 10):    
     txt_content = read_txt_file(txt_file)
-    prompt = '''
-    Give me coding excersises for a worksheet using this transcript.
-    Format each question as JSON objects with the following structure and put all the questions in an array:
-    question = {
-                'number': 
-                'title':  
-                'description': 
-                
-            }
-    '''
+    prompt = read_txt_file(".\\Worksheet-prompt.txt")
     prompt += f'Transcript: {txt_content}\nNumber of questions: {number_of_questions}'
     response = prompt_genai(prompt)
     response = response.strip() # removes leading and trailing whitespace
     questions = response[7:-3].strip() # removes the first 7 characters and the last 3 characters
     return questions
-    
+
 
 def generate_worksheet(file_name, questions):
-    output_path = "./workesheet output"
+    def generate_table(section, document):
+        table = Table(document, True)
+        table.PreferredWidth = PreferredWidth(WidthType.Percentage, int(100))
+        table.TableFormat.Borders.BorderType = BorderStyle.Single
+        table.TableFormat.Borders.Color = Color.get_Black()
+        row = table.AddRow(False, 1)
+        row.Height = 20.0
+        section.Tables.Add(table)
+
+    def remove_signature(file_path):
+        doc = docx.Document(file_path)
+        for para in doc.paragraphs:
+            para.text = para.text.replace("Evaluation Warning: The document was created with Spire.Doc for Python.", "")
+            
+        doc.save(file_path)
+        
+    output_path = "./worksheet_output"
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
+    file_name = file_name.split(".")[0]
     questions = json.loads(questions)
+    
     document = Document()
-    heading = document.add_heading(f'{file_name} Exercises', level=0)  # Use any heading level
-    run = heading.runs[0]
-    run.font.size = Pt(16)
-    
+    section = document.AddSection()
+
+    # generate header
+    header = section.HeadersFooters.Header
+    header_paragraph = header.AddParagraph()
+    header_paragraph.AppendText(f'{file_name} Exercises')
+    style = ParagraphStyle(document)
+    style.CharacterFormat.FontSize = 26
+    document.Styles.Add(style)
+    header_paragraph.ApplyStyle(style.Name)
+
     for question in questions:
-        print(question)
-        question_title = f'Exercise {question["number"]} {question["title"]}'
-        title = document.add_paragraph()  
-        run = title.add_run(question_title)  
-        run.bold = True  
+        # generate the question heading
+        question_title = f'Exercise {question["number"]}: {question["title"]}'
+        title_paragraph = section.AddParagraph()
+        title_paragraph.AppendBreak(BreakType.LineBreak)
+        title_text = title_paragraph.AppendText(question_title)
+        title_text.CharacterFormat.Bold = True
+        title_paragraph.AppendBreak(BreakType.LineBreak)
+        section.Body.Paragraphs.Add(title_paragraph)
 
-        question_description = f'{question["description"]}'
-        description = document.add_paragraph(question_description)
+        # generate the question description
+        question_description = question["description"]
+        desc_paragraph = section.AddParagraph()
+        desc_paragraph.AppendText(question_description)
+        desc_paragraph.AppendBreak(BreakType.LineBreak)
+        section.Body.Paragraphs.Add(desc_paragraph)
+    
+        # generate code input table
+        code_input = section.AddParagraph()
+        code_input.AppendText("Code")
+        section.Body.Paragraphs.Add(code_input)
+        generate_table(section, document)
 
-        table = document.add_table(rows=4, cols=4)
+        # generate output input table
+        output_input = section.AddParagraph()
+        output_input.AppendText("Output")
+        section.Body.Paragraphs.Add(output_input)
+        generate_table(section, document)
 
-    
-    
-    
     file = f'{file_name} Exercises.docx'
-    file_path = os.path.join(output_path, file) 
-    document.save(file_path)
+    file_path = os.path.join(output_path, file)
+    document.SaveToFile(file_path, FileFormat.Docx)
+    remove_signature(file_path)
+
 
 if __name__ == "__main__":
-    
     generated_files = {}
     txt_file = select_file()
     file_name = os.path.basename(txt_file)
     questions = generate_questions(txt_file)
     generate_worksheet(file_name, questions)
-    ## forms_questions_json = generate_json_data(txt_file)
-    ## generate_form(forms_questions_json)
+    forms_questions_json = generate_json_data(txt_file)
+    generate_form(forms_questions_json)
