@@ -29,6 +29,8 @@ from oauth2client.file import Storage
 from httplib2 import Http
 from oauth2client import tools, client
 
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
 
 class App:
     def __init__(self):
@@ -110,28 +112,56 @@ def generate_json_data(txt_file_path):
     return forms_questions_json
 
 
+
+def get_credentials(client_secret_file, token_file): #?
+    """
+    Generates and retrieves OAuth 2.0 credentials.
+    """
+    credentials = None
+
+    SCOPES = [ # https://accounts.google.com/o/oauth2/auth
+        "https://www.googleapis.com/auth/forms.body",
+        "https://www.googleapis.com/auth/forms.responses.readonly"
+    ]
+
+    # Check if the token file already exists
+    if os.path.exists(token_file):
+        from google.auth.transport.requests import Request
+        from google.oauth2.credentials import Credentials
+
+        credentials = Credentials.from_authorized_user_file(token_file, SCOPES)
+
+        # Refresh the token if expired
+        if credentials and credentials.expired and credentials.refresh_token:
+            credentials.refresh(Request())
+
+    # If there are no valid credentials, perform the OAuth flow
+    if not credentials or not credentials.valid:
+        flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, SCOPES)
+        credentials = flow.run_local_server(port=0)
+
+        # Save the credentials for future use
+        with open(token_file, 'w') as token:
+            token.write(credentials.to_json())
+
+    return credentials
+
+
 '''
 Code in function taken from Tanmay
 '''
 def generate_form(forms_questions_json):
     forms_questions_json = json.loads(forms_questions_json) # creates a json object
 
-    SCOPES = [
-        "https://www.googleapis.com/auth/forms.body",
-        "https://www.googleapis.com/auth/forms.responses.readonly"
-    ]
+    credentials_file = 'owens-web-client-secret.json'
+    token_file = None
+
+    credentials = get_credentials(credentials_file, token_file)
 
     DISCOVERY_DOC = "https://forms.googleapis.com/$discovery/rest?version=v1"
 
-    store = Storage("token.json") # token is Tanmay's
-    creds = store.get() # gets credentials from the token
-
-    if not creds or creds.invalid:
-        flow = client.flow_from_clientsecrets("client_secrets.json", SCOPES) # gets client secret; client secret is Tanmay's
-        creds = tools.run_flow(flow, store)
-
     form_service = discovery.build( # creates a service object to interact with the Google Forms API
-        "forms", "v1", http=creds.authorize(Http()), discoveryServiceUrl=DISCOVERY_DOC, static_discovery=False
+        "forms", "v1", http=credentials.authorize(Http()), discoveryServiceUrl=DISCOVERY_DOC, static_discovery=False
     )
 
     form = { # initalizes the Google Form 
@@ -283,8 +313,8 @@ def generate_worksheet(file_name, questions):
 if __name__ == "__main__":
     generated_files = {}
     txt_file = select_file()
-    file_name = os.path.basename(txt_file)
-    questions = generate_questions(txt_file)
-    generate_worksheet(file_name, questions)
+    # file_name = os.path.basename(txt_file)
+    # questions = generate_questions(txt_file)
+    # generate_worksheet(file_name, questions)
     forms_questions_json = generate_json_data(txt_file)
     generate_form(forms_questions_json)
