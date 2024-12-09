@@ -1,15 +1,24 @@
-SCOPES = [
-    "https://www.googleapis.com/auth/forms.body",
-    "https://www.googleapis.com/auth/forms.responses.readonly"
-]
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 
-DISCOVERY_DOC = "https://forms.googleapis.com/$discovery/rest?version=v1"
+# Path to your service account key file
+SERVICE_ACCOUNT_FILE = 'owens-web.json'
 
-store_token = Storage("token.json") # token is Tanmay's; Google Forms
+# Define scopes
+SCOPES = ['https://www.googleapis.com/auth/forms.body']
 
-credentials = store_token.get() # gets credentials from the token
+# Authenticate using the service account
+creds = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 
-if not credentials or credentials.invalid:
-    
-    flow = client.flow_from_clientsecrets("owens-client_secrets.json", SCOPES) # flow object: gets client secret
-    credentials = tools.run_flow(flow, store_token)
+# Create the service
+service = build('forms', 'v1', credentials=creds)
+
+# Create a new form
+form_data = {
+    'info': {
+        'title': 'My New Google Form'
+    }
+}
+form = service.forms().create(body=form_data).execute()
+print(f"Form created with ID: {form['formId']}")

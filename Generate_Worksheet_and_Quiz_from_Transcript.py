@@ -2,6 +2,7 @@ import os
 import io
 import json
 import docx
+import requests
 
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -31,6 +32,14 @@ from oauth2client import tools, client
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+
+import json
+from googleapiclient import discovery
+from httplib2 import Http
 
 class App:
     def __init__(self):
@@ -84,14 +93,15 @@ def prompt_genai(prompt):
     text = ''
     load_dotenv() # Load variables from .env
     api_key = os.getenv("API_KEY")  # Access the API key
+
     genai.configure(api_key=api_key) # Replace with your own Gemini API Key
     model = genai.GenerativeModel("gemini-1.5-flash")
     responses = model.generate_content([prompt])
     for response in responses:
         text += ' ' + response.text
-    
-    return text
 
+    return text
+    
 
 def select_file():
     app = App()
@@ -113,10 +123,25 @@ def generate_json_data(txt_file_path):
 
 
 
-def get_credentials(client_secret_file, token_file): #?
+def get_credentials(client_secret_file, token_file='token.json'):
     """
-    Generates and retrieves OAuth 2.0 credentials.
+    Generates OAuth 2.0 credentials and retrieves the access token.
     """
+    '''
+    # Define the scopes for Google Forms
+    SCOPES = ['https://www.googleapis.com/auth/forms.body']
+
+    # Create a flow instance and run the authorization process
+    flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, SCOPES)
+    credentials = flow.run_local_server(port=0)
+
+    # Get the access token
+    access_token = credentials.token
+    print(f"Access Token: {access_token}")
+
+    return credentials, access_token
+
+    '''
     credentials = None
 
     SCOPES = [ # https://accounts.google.com/o/oauth2/auth
@@ -145,24 +170,29 @@ def get_credentials(client_secret_file, token_file): #?
             token.write(credentials.to_json())
 
     return credentials
+    
 
 
 '''
 Code in function taken from Tanmay
 '''
 def generate_form(forms_questions_json):
-    forms_questions_json = json.loads(forms_questions_json) # creates a json object
+    print('forms questions json: ', forms_questions_json)
+    forms_questions_json = json.loads(forms_questions_json)  # Creates a JSON object
 
-    credentials_file = 'owens-web-client-secret.json'
-    token_file = None
+    client_secret_file = 'owens-web-client-secret.json'
 
-    credentials = get_credentials(credentials_file, token_file)
+    # Retrieve credentials and access token
+    credentials = get_credentials(client_secret_file)
+    print('credentials: ', credentials)
 
     DISCOVERY_DOC = "https://forms.googleapis.com/$discovery/rest?version=v1"
 
-    form_service = discovery.build( # creates a service object to interact with the Google Forms API
-        "forms", "v1", http=credentials.authorize(Http()), discoveryServiceUrl=DISCOVERY_DOC, static_discovery=False
+    # Create a service object to interact with the Google Forms API
+    form_service = discovery.build(
+        "forms", "v1", credentials=credentials, discoveryServiceUrl=DISCOVERY_DOC, static_discovery=False
     )
+    print("Form service created successfully!")
 
     form = { # initalizes the Google Form 
         "info": {
@@ -313,8 +343,8 @@ def generate_worksheet(file_name, questions):
 if __name__ == "__main__":
     generated_files = {}
     txt_file = select_file()
-    # file_name = os.path.basename(txt_file)
-    # questions = generate_questions(txt_file)
-    # generate_worksheet(file_name, questions)
+    file_name = os.path.basename(txt_file)
+    questions = generate_questions(txt_file)
+    generate_worksheet(file_name, questions) 
     forms_questions_json = generate_json_data(txt_file)
     generate_form(forms_questions_json)
