@@ -2,44 +2,23 @@ import os
 import io
 import json
 import docx
-import requests
-
 import google.generativeai as genai
 from dotenv import load_dotenv
-
-
 from spire.doc import *
 from spire.doc.common import *
-
 import google.generativeai as genai
 import webbrowser
 from apiclient import discovery
-from oauth2client.file import Storage
-from httplib2 import Http
-from oauth2client import tools, client
-
 import tkinter as tk
 from tkinter import filedialog
 from PIL import Image, ImageTk
-
 import google.generativeai as genai
-
 import webbrowser
 from apiclient import discovery
-from oauth2client.file import Storage
-from httplib2 import Http
-from oauth2client import tools, client
-
 from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-
-import json
 from googleapiclient import discovery
-from httplib2 import Http
+
 
 class App:
     def __init__(self):
@@ -72,15 +51,12 @@ class App:
         # return the selected file path
         if selected_file:
             self.txt_file = selected_file
-            print(self.txt_file)
 
         else:
-            print("no file selected.")
             self.txt_file = None
-            print(self.txt_file)
     
 
-    def close_app(self):
+    def close_axp(self):
         self.root.destroy()
 
 
@@ -124,24 +100,6 @@ def generate_json_data(txt_file_path):
 
 
 def get_credentials(client_secret_file, token_file='token.json'):
-    """
-    Generates OAuth 2.0 credentials and retrieves the access token.
-    """
-    '''
-    # Define the scopes for Google Forms
-    SCOPES = ['https://www.googleapis.com/auth/forms.body']
-
-    # Create a flow instance and run the authorization process
-    flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, SCOPES)
-    credentials = flow.run_local_server(port=0)
-
-    # Get the access token
-    access_token = credentials.token
-    print(f"Access Token: {access_token}")
-
-    return credentials, access_token
-
-    '''
     credentials = None
 
     SCOPES = [ # https://accounts.google.com/o/oauth2/auth
@@ -172,19 +130,13 @@ def get_credentials(client_secret_file, token_file='token.json'):
     return credentials
     
 
-
-'''
-Code in function taken from Tanmay
-'''
 def generate_form(forms_questions_json):
-    print('forms questions json: ', forms_questions_json)
     forms_questions_json = json.loads(forms_questions_json)  # Creates a JSON object
 
     client_secret_file = 'owens-web-client-secret.json'
 
     # Retrieve credentials and access token
     credentials = get_credentials(client_secret_file)
-    print('credentials: ', credentials)
 
     DISCOVERY_DOC = "https://forms.googleapis.com/$discovery/rest?version=v1"
 
@@ -192,7 +144,6 @@ def generate_form(forms_questions_json):
     form_service = discovery.build(
         "forms", "v1", credentials=credentials, discoveryServiceUrl=DISCOVERY_DOC, static_discovery=False
     )
-    print("Form service created successfully!")
 
     form = { # initalizes the Google Form 
         "info": {

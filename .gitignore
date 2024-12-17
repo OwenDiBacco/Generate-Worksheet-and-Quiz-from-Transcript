@@ -34,11 +34,22 @@ ehthumbs.db
 # output folder
 worksheet_output/
 
+# expirement module
+Other.py
+Expirement.py
+Authenticate_Token.py
+
 # client secret
 client_secrets.json
+owens-client_secret.json
+owens-web-client_secret.json
 
 # credentials
 credentials.json
+owens-credentials.json 
 
 # token 
 token.json
+
+# other
+prev-api-key.txt
