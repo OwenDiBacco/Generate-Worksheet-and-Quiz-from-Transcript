@@ -1,14 +1,12 @@
 # Worksheet and Quiz Generator from Transcript
 
-The objective of this program is to generate a Google Form project and a worksheet in a Word document based off an </br>
-AI response generated from a selected text file.
+The objective of this program is to generate a Google Form project and a worksheet in a Word document based off an AI response generated from a selected text file.
 
 ## Table of Contents
 
 - [Installation](#Installation)
-- [Make The Required Installations](#Make The Required Installations)
-- [How To Run The Application](#How To Run The Application)
-- [How The Application Works](#How The Application Works)
+- [How-To-Run-The-Application](#How-To-Run-The-Application)
+- [How-The-Application-Works](#How-The-Application-Works)
 
 ## Installation
 
@@ -35,14 +33,18 @@ pip install -r requirements.txt
    e). copy this key becuase it is the only time you'll be able to access it<br>
    d). create a file called '.env,' declare a function named 'API_KEY' and store your API key value in it. This creates an environemnt variable named 'API KEY'<br>
 
-## How To Run The Application 
+4. Create a client_secret.json file
+
+5. Create a token.json file
+
+## How-To-Run-The-Application 
 
 1. Run the Generate_Worksheet_and_Quiz_from_Transcript.py file
 2. Select the text file icon on the GUI and select the text file you would like to reference
 3. When the run has completed, you will see output worksheet in your 'output-worksheet' folder in your root directory and the Google Form will appear automatically on your screen
 
 
-## How The Application Works
+## How-The-Application-Works
 
 1. The generate_questions() function is called with the path to the text file passed as an argument. The purpose of this function is to call the pompt_genai() function and pass in a prompt to generate a number of questions regarding the material
 2. The questions are then passed into the generate_worksheet() function which creates a Word document with all the conent
