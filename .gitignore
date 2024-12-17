@@ -50,6 +50,8 @@ owens-credentials.json
 
 # token 
 token.json
+owens-token.json
+owens-token.txt.txt
 
 # other
 prev-api-key.txt
