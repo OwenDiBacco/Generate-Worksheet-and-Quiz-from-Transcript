@@ -56,7 +56,7 @@ class App:
             self.txt_file = None
     
 
-    def close_axp(self):
+    def close_app(self):
         self.root.destroy()
 
 
